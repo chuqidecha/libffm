@@ -18,7 +18,7 @@ R: Precomputed scaling factor to make the 2-norm of each instance to be 1. len(R
 v: Value of each element in the problem
 */
 
-#pragma GCC diagnostic ignored "-Wunused-result" 
+#pragma GCC diagnostic ignored "-Wunused-result"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -45,9 +45,11 @@ v: Value of each element in the problem
 #include "ffm.h"
 #include "timer.h"
 
-namespace ffm {
+namespace ffm
+{
 
-namespace {
+namespace
+{
 
 using namespace std;
 
@@ -57,17 +59,19 @@ ffm_int const kALIGNByte = 16;
 ffm_int const kALIGNByte = 4;
 #endif
 
-ffm_int const kALIGN = kALIGNByte/sizeof(ffm_float);
+ffm_int const kALIGN = kALIGNByte / sizeof(ffm_float); // 1或者4
 ffm_int const kCHUNK_SIZE = 10000000;
 ffm_int const kMaxLineSize = 100000;
 
-inline ffm_int get_k_aligned(ffm_int k) {
-    return (ffm_int) ceil((ffm_float)k / kALIGN) * kALIGN;
+inline ffm_int get_k_aligned(ffm_int k)
+{
+    return (ffm_int)ceil((ffm_float)k / kALIGN) * kALIGN;
 }
 
-ffm_long get_w_size(ffm_model &model) {
+ffm_long get_w_size(ffm_model &model)
+{
     ffm_int k_aligned = get_k_aligned(model.k);
-    return (ffm_long) model.n * model.m * k_aligned * 2;
+    return (ffm_long)model.n * model.m * k_aligned * 2;
 }
 
 #if defined USESSE
@@ -75,11 +79,12 @@ inline ffm_float wTx(
     ffm_node *begin,
     ffm_node *end,
     ffm_float r,
-    ffm_model &model, 
-    ffm_float kappa=0, 
-    ffm_float eta=0, 
-    ffm_float lambda=0, 
-    bool do_update=false) {
+    ffm_model &model,
+    ffm_float kappa = 0,
+    ffm_float eta = 0,
+    ffm_float lambda = 0,
+    bool do_update = false)
+{
 
     ffm_int align0 = 2 * get_k_aligned(model.k);
     ffm_int align1 = model.m * align0;
@@ -90,32 +95,32 @@ inline ffm_float wTx(
 
     __m128 XMMt = _mm_setzero_ps();
 
-    for(ffm_node *N1 = begin; N1 != end; N1++)
+    for (ffm_node *N1 = begin; N1 != end; N1++)
     {
         ffm_int j1 = N1->j;
         ffm_int f1 = N1->f;
         ffm_float v1 = N1->v;
-        if(j1 >= model.n || f1 >= model.m)
+        if (j1 >= model.n || f1 >= model.m)
             continue;
 
-        for(ffm_node *N2 = N1+1; N2 != end; N2++)
+        for (ffm_node *N2 = N1 + 1; N2 != end; N2++)
         {
             ffm_int j2 = N2->j;
             ffm_int f2 = N2->f;
             ffm_float v2 = N2->v;
-            if(j2 >= model.n || f2 >= model.m)
+            if (j2 >= model.n || f2 >= model.m)
                 continue;
 
-            ffm_float *w1_base = model.W + (ffm_long)j1*align1 + f2*align0;
-            ffm_float *w2_base = model.W + (ffm_long)j2*align1 + f1*align0;
+            ffm_float *w1_base = model.W + (ffm_long)j1 * align1 + f2 * align0;
+            ffm_float *w2_base = model.W + (ffm_long)j2 * align1 + f1 * align0;
 
-            __m128 XMMv = _mm_set1_ps(v1*v2*r);
+            __m128 XMMv = _mm_set1_ps(v1 * v2 * r);
 
-            if(do_update)
+            if (do_update)
             {
                 __m128 XMMkappav = _mm_mul_ps(XMMkappa, XMMv);
 
-                for(ffm_int d = 0; d < align0; d += kALIGN * 2)
+                for (ffm_int d = 0; d < align0; d += kALIGN * 2)
                 {
                     ffm_float *w1 = w1_base + d;
                     ffm_float *w2 = w2_base + d;
@@ -130,19 +135,19 @@ inline ffm_float wTx(
                     __m128 XMMwg2 = _mm_load_ps(wg2);
 
                     __m128 XMMg1 = _mm_add_ps(
-                                   _mm_mul_ps(XMMlambda, XMMw1),
-                                   _mm_mul_ps(XMMkappav, XMMw2));
+                        _mm_mul_ps(XMMlambda, XMMw1),
+                        _mm_mul_ps(XMMkappav, XMMw2));
                     __m128 XMMg2 = _mm_add_ps(
-                                   _mm_mul_ps(XMMlambda, XMMw2),
-                                   _mm_mul_ps(XMMkappav, XMMw1));
+                        _mm_mul_ps(XMMlambda, XMMw2),
+                        _mm_mul_ps(XMMkappav, XMMw1));
 
                     XMMwg1 = _mm_add_ps(XMMwg1, _mm_mul_ps(XMMg1, XMMg1));
                     XMMwg2 = _mm_add_ps(XMMwg2, _mm_mul_ps(XMMg2, XMMg2));
 
-                    XMMw1 = _mm_sub_ps(XMMw1, _mm_mul_ps(XMMeta, 
-                            _mm_mul_ps(_mm_rsqrt_ps(XMMwg1), XMMg1)));
-                    XMMw2 = _mm_sub_ps(XMMw2, _mm_mul_ps(XMMeta, 
-                            _mm_mul_ps(_mm_rsqrt_ps(XMMwg2), XMMg2)));
+                    XMMw1 = _mm_sub_ps(XMMw1, _mm_mul_ps(XMMeta,
+                                                         _mm_mul_ps(_mm_rsqrt_ps(XMMwg1), XMMg1)));
+                    XMMw2 = _mm_sub_ps(XMMw2, _mm_mul_ps(XMMeta,
+                                                         _mm_mul_ps(_mm_rsqrt_ps(XMMwg2), XMMg2)));
 
                     _mm_store_ps(w1, XMMw1);
                     _mm_store_ps(w2, XMMw2);
@@ -153,19 +158,19 @@ inline ffm_float wTx(
             }
             else
             {
-                for(ffm_int d = 0; d < align0; d += kALIGN * 2)
+                for (ffm_int d = 0; d < align0; d += kALIGN * 2)
                 {
-                    __m128  XMMw1 = _mm_load_ps(w1_base+d);
-                    __m128  XMMw2 = _mm_load_ps(w2_base+d);
+                    __m128 XMMw1 = _mm_load_ps(w1_base + d);
+                    __m128 XMMw2 = _mm_load_ps(w2_base + d);
 
-                    XMMt = _mm_add_ps(XMMt, 
-                           _mm_mul_ps(_mm_mul_ps(XMMw1, XMMw2), XMMv));
+                    XMMt = _mm_add_ps(XMMt,
+                                      _mm_mul_ps(_mm_mul_ps(XMMw1, XMMw2), XMMv));
                 }
             }
         }
     }
 
-    if(do_update)
+    if (do_update)
         return 0;
 
     XMMt = _mm_hadd_ps(XMMt, XMMt);
@@ -182,39 +187,43 @@ inline ffm_float wTx(
     ffm_node *begin,
     ffm_node *end,
     ffm_float r,
-    ffm_model &model, 
-    ffm_float kappa=0, 
-    ffm_float eta=0, 
-    ffm_float lambda=0, 
-    bool do_update=false) {
+    ffm_model &model,
+    ffm_float kappa = 0,
+    ffm_float eta = 0,
+    ffm_float lambda = 0,
+    bool do_update = false)
+{
 
-    ffm_int align0 = 2 * get_k_aligned(model.k);
-    ffm_int align1 = model.m * align0;
+    ffm_int align0 = 2 * get_k_aligned(model.k); // 每个ebedding向量的偏移量
+    ffm_int align1 = model.m * align0; // 每个特征的偏移量
 
     ffm_float t = 0;
-    for(ffm_node *N1 = begin; N1 != end; N1++) {
+    for (ffm_node *N1 = begin; N1 != end; N1++)
+    {
         ffm_int j1 = N1->j;
         ffm_int f1 = N1->f;
         ffm_float v1 = N1->v;
-        if(j1 >= model.n || f1 >= model.m)
+        if (j1 >= model.n || f1 >= model.m)
             continue;
 
-        for(ffm_node *N2 = N1+1; N2 != end; N2++) {
+        for (ffm_node *N2 = N1 + 1; N2 != end; N2++)
+        {
             ffm_int j2 = N2->j;
             ffm_int f2 = N2->f;
             ffm_float v2 = N2->v;
-            if(j2 >= model.n || f2 >= model.m)
+            if (j2 >= model.n || f2 >= model.m)
                 continue;
 
-            ffm_float *w1 = model.W + (ffm_long)j1*align1 + f2*align0;
-            ffm_float *w2 = model.W + (ffm_long)j2*align1 + f1*align0;
+            ffm_float *w1 = model.W + (ffm_long)j1 * align1 + f2 * align0;
+            ffm_float *w2 = model.W + (ffm_long)j2 * align1 + f1 * align0;
 
             ffm_float v = v1 * v2 * r;
 
-            if(do_update) {
+            if (do_update)
+            {
                 ffm_float *wg1 = w1 + kALIGN;
                 ffm_float *wg2 = w2 + kALIGN;
-                for(ffm_int d = 0; d < align0; d += kALIGN * 2)
+                for (ffm_int d = 0; d < align0; d += kALIGN * 2)
                 {
                     ffm_float g1 = lambda * w1[d] + kappa * w2[d] * v;
                     ffm_float g2 = lambda * w2[d] + kappa * w1[d] * v;
@@ -225,8 +234,10 @@ inline ffm_float wTx(
                     w1[d] -= eta / sqrt(wg1[d]) * g1;
                     w2[d] -= eta / sqrt(wg2[d]) * g2;
                 }
-            } else {
-                for(ffm_int d = 0; d < align0; d += kALIGN * 2)
+            }
+            else
+            {
+                for (ffm_int d = 0; d < align0; d += kALIGN * 2)
                     t += w1[d] * w2[d] * v;
             }
         }
@@ -236,7 +247,7 @@ inline ffm_float wTx(
 }
 #endif
 
-ffm_float* malloc_aligned_float(ffm_long size)
+ffm_float *malloc_aligned_float(ffm_long size)
 {
     void *ptr;
 
@@ -246,19 +257,19 @@ ffm_float* malloc_aligned_float(ffm_long size)
 
 #else
 
-    #ifdef _WIN32
-        ptr = _aligned_malloc(size*sizeof(ffm_float), kALIGNByte);
-        if(ptr == nullptr)
-            throw bad_alloc();
-    #else
-        int status = posix_memalign(&ptr, kALIGNByte, size*sizeof(ffm_float));
-        if(status != 0)
-            throw bad_alloc();
-    #endif
+#ifdef _WIN32
+    ptr = _aligned_malloc(size * sizeof(ffm_float), kALIGNByte);
+    if (ptr == nullptr)
+        throw bad_alloc();
+#else
+    int status = posix_memalign(&ptr, kALIGNByte, size * sizeof(ffm_float));
+    if (status != 0)
+        throw bad_alloc();
+#endif
 
 #endif
-    
-    return (ffm_float*)ptr;
+
+    return (ffm_float *)ptr;
 }
 
 ffm_model init_model(ffm_int n, ffm_int m, ffm_parameter param)
@@ -267,25 +278,30 @@ ffm_model init_model(ffm_int n, ffm_int m, ffm_parameter param)
     model.n = n;
     model.k = param.k;
     model.m = m;
-    model.W = nullptr;
+    model.W = nullptr; //参数的格式: (权重，Adagrad)
     model.normalization = param.normalization;
 
     ffm_int k_aligned = get_k_aligned(model.k);
-    
-    model.W = malloc_aligned_float((ffm_long)n*m*k_aligned*2);
 
-    ffm_float coef = 1.0f / sqrt(model.k);
+    // n*m 每个feature都有m个域向量，ebedding向量大小为k，向量对应的Adagrad参数大小为k
+    model.W = malloc_aligned_float((ffm_long)n * m * k_aligned * 2);
+
+    ffm_float coef = 1.0f / sqrt(model.k); //初始一个较小的值，随机数乘以该值
     ffm_float *w = model.W;
 
     default_random_engine generator;
     uniform_real_distribution<ffm_float> distribution(0.0, 1.0);
 
-    for(ffm_int j = 0; j < model.n; j++) {
-        for(ffm_int f = 0; f < model.m; f++) {
-            for(ffm_int d = 0; d < k_aligned;) {
-                for(ffm_int s = 0; s < kALIGN; s++, w++, d++) {
-                    w[0] = (d < model.k)? coef * distribution(generator) : 0.0;
-                    w[kALIGN] = 1;
+    for (ffm_int j = 0; j < model.n; j++)
+    {
+        for (ffm_int f = 0; f < model.m; f++)
+        {
+            for (ffm_int d = 0; d < k_aligned;)
+            {
+                for (ffm_int s = 0; s < kALIGN; s++, w++, d++)
+                {
+                    w[0] = (d < model.k) ? coef * distribution(generator) : 0.0; //w[0]和 *w等价，当前位置赋值
+                    w[kALIGN] = 1;                                               // 哦，这个是给Adagrad赋值为1
                 }
                 w += kALIGN;
             }
@@ -295,59 +311,65 @@ ffm_model init_model(ffm_int n, ffm_int m, ffm_parameter param)
     return model;
 }
 
-struct disk_problem_meta {
-    ffm_int n = 0;
-    ffm_int m = 0;
-    ffm_int l = 0;
-    ffm_int num_blocks = 0;
-    ffm_long B_pos = 0;
-    uint64_t hash1;
-    uint64_t hash2;
+struct disk_problem_meta
+{
+    ffm_int n = 0; //特征数
+    ffm_int m = 0; // 域个数
+    ffm_int l = 0; // 样本数量
+    ffm_int num_blocks = 0; // block的数量，每个block的记录数为kCHUNK_SIZE
+    ffm_long B_pos = 0; // 记录每个block在文件中的起始位置
+    uint64_t hash1; // 文件第一个block的hash值
+    uint64_t hash2; // 整个文件的hash值
 };
 
-struct problem_on_disk {
-    disk_problem_meta meta;
-    vector<ffm_float> Y;
+struct problem_on_disk
+{
+    disk_problem_meta meta; 
+    vector<ffm_float> Y; 
     vector<ffm_float> R;
     vector<ffm_long> P;
     vector<ffm_node> X;
     vector<ffm_long> B;
 
-    problem_on_disk(string path) {
+    problem_on_disk(string path)
+    {
         f.open(path, ios::in | ios::binary);
-        if(f.good()) {
-            f.read(reinterpret_cast<char*>(&meta), sizeof(disk_problem_meta));
+        if (f.good())
+        {
+            f.read(reinterpret_cast<char *>(&meta), sizeof(disk_problem_meta));
             f.seekg(meta.B_pos);
             B.resize(meta.num_blocks);
-            f.read(reinterpret_cast<char*>(B.data()), sizeof(ffm_long) * meta.num_blocks);
+            f.read(reinterpret_cast<char *>(B.data()), sizeof(ffm_long) * meta.num_blocks);
         }
     }
 
-    int load_block(int block_index) {
-        if(block_index >= meta.num_blocks)
+    int load_block(int block_index)
+    {
+        if (block_index >= meta.num_blocks)
             assert(false);
 
         f.seekg(B[block_index]);
 
         ffm_int l;
-        f.read(reinterpret_cast<char*>(&l), sizeof(ffm_int));
+        f.read(reinterpret_cast<char *>(&l), sizeof(ffm_int));
 
         Y.resize(l);
-        f.read(reinterpret_cast<char*>(Y.data()), sizeof(ffm_float) * l);
+        f.read(reinterpret_cast<char *>(Y.data()), sizeof(ffm_float) * l);
 
         R.resize(l);
-        f.read(reinterpret_cast<char*>(R.data()), sizeof(ffm_float) * l);
+        f.read(reinterpret_cast<char *>(R.data()), sizeof(ffm_float) * l);
 
-        P.resize(l+1);
-        f.read(reinterpret_cast<char*>(P.data()), sizeof(ffm_long) * (l+1));
+        P.resize(l + 1);
+        f.read(reinterpret_cast<char *>(P.data()), sizeof(ffm_long) * (l + 1));
 
         X.resize(P[l]);
-        f.read(reinterpret_cast<char*>(X.data()), sizeof(ffm_node) * P[l]);
+        f.read(reinterpret_cast<char *>(X.data()), sizeof(ffm_node) * P[l]);
 
         return l;
     }
 
-    bool is_empty() {
+    bool is_empty()
+    {
         return meta.l == 0;
     }
 
@@ -355,46 +377,53 @@ private:
     ifstream f;
 };
 
-uint64_t hashfile(string txt_path, bool one_block=false)
+uint64_t hashfile(string txt_path, bool one_block = false)
 {
-    ifstream f(txt_path, ios::ate | ios::binary);
-    if(f.bad())
+    ifstream f(txt_path, ios::ate | ios::binary); // 打开文件并将指针至于文件尾
+    if (f.bad())
         return 0;
 
-    ffm_long end = (ffm_long) f.tellg();
+    ffm_long end = (ffm_long)f.tellg();
     f.seekg(0, ios::beg);
-    assert(static_cast<int>(f.tellg()) == 0);
+    assert(static_cast<int>(f.tellg()) == 0); // 文件不存在
 
     uint64_t magic = 90359;
-    for(ffm_long pos = 0; pos < end; ) {
+    for (ffm_long pos = 0; pos < end;)
+    {
         ffm_long next_pos = min(pos + kCHUNK_SIZE, end);
         ffm_long size = next_pos - pos;
         vector<char> buffer(kCHUNK_SIZE);
         f.read(buffer.data(), size);
 
         ffm_int i = 0;
-        while(i < size - 8) {
-            uint64_t x = *reinterpret_cast<uint64_t*>(buffer.data() + i);
-            magic = ( (magic + x) * (magic + x + 1) >> 1) + x;
+        while (i < size - 8)
+        {
+            uint64_t x = *reinterpret_cast<uint64_t *>(buffer.data() + i);
+            magic = ((magic + x) * (magic + x + 1) >> 1) + x;
             i += 8;
         }
-        for(; i < size; i++) {
+        for (; i < size; i++)
+        {
             char x = buffer[i];
-            magic = ( (magic + x) * (magic + x + 1) >> 1) + x;
+            magic = ((magic + x) * (magic + x + 1) >> 1) + x;
         }
 
         pos = next_pos;
-        if(one_block)
+        if (one_block)
             break;
     }
 
     return magic;
 }
 
-void txt2bin(string txt_path, string bin_path) {
-    
+/**
+ * 二进制文件格式： 文件元数据、数据块、每个数据块的起始位置
+ */
+void txt2bin(string txt_path, string bin_path)
+{
+
     FILE *f_txt = fopen(txt_path.c_str(), "r");
-    if(f_txt == nullptr)
+    if (f_txt == nullptr)
         throw;
 
     ofstream f_bin(bin_path, ios::out | ios::binary);
@@ -410,17 +439,18 @@ void txt2bin(string txt_path, string bin_path) {
     vector<ffm_node> X;
     vector<ffm_long> B;
 
-    auto write_chunk = [&] () {
+    // 数据块写入文件
+    auto write_chunk = [&]() {
         B.push_back(f_bin.tellp());
         ffm_int l = Y.size();
         ffm_long nnz = P[l];
         meta.l += l;
 
-        f_bin.write(reinterpret_cast<char*>(&l), sizeof(ffm_int));
-        f_bin.write(reinterpret_cast<char*>(Y.data()), sizeof(ffm_float) * l);
-        f_bin.write(reinterpret_cast<char*>(R.data()), sizeof(ffm_float) * l);
-        f_bin.write(reinterpret_cast<char*>(P.data()), sizeof(ffm_long) * (l+1));
-        f_bin.write(reinterpret_cast<char*>(X.data()), sizeof(ffm_node) * nnz);
+        f_bin.write(reinterpret_cast<char *>(&l), sizeof(ffm_int)); // 当前块的样本数
+        f_bin.write(reinterpret_cast<char *>(Y.data()), sizeof(ffm_float) * l); // 样本标注
+        f_bin.write(reinterpret_cast<char *>(R.data()), sizeof(ffm_float) * l); // 样本归一化参数（L2范数）
+        f_bin.write(reinterpret_cast<char *>(P.data()), sizeof(ffm_long) * (l + 1)); // 向量的稀疏表示，p中的每个值表示对应样本在X中的起始位置
+        f_bin.write(reinterpret_cast<char *>(X.data()), sizeof(ffm_node) * nnz);
 
         Y.clear();
         R.clear();
@@ -430,19 +460,21 @@ void txt2bin(string txt_path, string bin_path) {
         meta.num_blocks++;
     };
 
-    f_bin.write(reinterpret_cast<char*>(&meta), sizeof(disk_problem_meta));
+    f_bin.write(reinterpret_cast<char *>(&meta), sizeof(disk_problem_meta)); // 先将元数据写入文件头，占位
 
-    while(fgets(line.data(), kMaxLineSize, f_txt)) {
+    while (fgets(line.data(), kMaxLineSize, f_txt))
+    {
         char *y_char = strtok(line.data(), " \t");
 
-        ffm_float y = (atoi(y_char)>0)? 1.0f : -1.0f;
+        ffm_float y = (atoi(y_char) > 0) ? 1.0f : -1.0f; //类别标记使用的是正负1
 
         ffm_float scale = 0;
-        for(; ; p++) {
-            char *field_char = strtok(nullptr,":");
-            char *idx_char = strtok(nullptr,":");
-            char *value_char = strtok(nullptr," \t");
-            if(field_char == nullptr || *field_char == '\n')
+        for (;; p++)
+        {
+            char *field_char = strtok(nullptr, ":");
+            char *idx_char = strtok(nullptr, ":");
+            char *value_char = strtok(nullptr, " \t");
+            if (field_char == nullptr || *field_char == '\n')
                 break;
 
             ffm_node N;
@@ -452,10 +484,10 @@ void txt2bin(string txt_path, string bin_path) {
 
             X.push_back(N);
 
-            meta.m = max(meta.m, N.f+1);
-            meta.n = max(meta.n, N.j+1);
+            meta.m = max(meta.m, N.f + 1); // 统计域的个数
+            meta.n = max(meta.n, N.j + 1); // 统计特征维度
 
-            scale += N.v*N.v;
+            scale += N.v * N.v; //x ^ 2
         }
         scale = 1.0 / scale;
 
@@ -463,33 +495,34 @@ void txt2bin(string txt_path, string bin_path) {
         R.push_back(scale);
         P.push_back(p);
 
-        if(X.size() > (size_t)kCHUNK_SIZE)
-            write_chunk(); 
+        if (X.size() > (size_t)kCHUNK_SIZE)
+            write_chunk();
     }
-    write_chunk(); 
+    write_chunk();
     write_chunk(); // write a dummy empty chunk in order to know where the EOF is
     assert(meta.num_blocks == (ffm_int)B.size());
     meta.B_pos = f_bin.tellp();
-    f_bin.write(reinterpret_cast<char*>(B.data()), sizeof(ffm_long) * B.size());
+    f_bin.write(reinterpret_cast<char *>(B.data()), sizeof(ffm_long) * B.size());
 
     fclose(f_txt);
-    meta.hash1 = hashfile(txt_path, true);
-    meta.hash2 = hashfile(txt_path, false);
+    meta.hash1 = hashfile(txt_path, true); // 第一个block的hash值
+    meta.hash2 = hashfile(txt_path, false); // 整个文件的hash值
 
-    f_bin.seekp(0, ios::beg);
-    f_bin.write(reinterpret_cast<char*>(&meta), sizeof(disk_problem_meta));
+    f_bin.seekp(0, ios::beg); // 跳转到文件头
+    f_bin.write(reinterpret_cast<char *>(&meta), sizeof(disk_problem_meta)); // 将文件头真实数据写入
 }
 
-bool check_same_txt_bin(string txt_path, string bin_path) {
+bool check_same_txt_bin(string txt_path, string bin_path)
+{
     ifstream f_bin(bin_path, ios::binary | ios::ate);
-    if(f_bin.tellg() < (ffm_long)sizeof(disk_problem_meta))
+    if (f_bin.tellg() < (ffm_long)sizeof(disk_problem_meta))
         return false;
     disk_problem_meta meta;
     f_bin.seekg(0, ios::beg);
-    f_bin.read(reinterpret_cast<char*>(&meta), sizeof(disk_problem_meta));
-    if(meta.hash1 != hashfile(txt_path, true))
+    f_bin.read(reinterpret_cast<char *>(&meta), sizeof(disk_problem_meta));
+    if (meta.hash1 != hashfile(txt_path, true))
         return false;
-    if(meta.hash2 != hashfile(txt_path, false))
+    if (meta.hash2 != hashfile(txt_path, false))
         return false;
 
     return true;
@@ -497,39 +530,46 @@ bool check_same_txt_bin(string txt_path, string bin_path) {
 
 } // unnamed namespace
 
-ffm_model::~ffm_model() {
-    if(W != nullptr) {
+ffm_model::~ffm_model()
+{
+    if (W != nullptr)
+    {
 #ifndef USESSE
         free(W);
 #else
-    #ifdef _WIN32
+#ifdef _WIN32
         _aligned_free(W);
-    #else
+#else
         free(W);
-    #endif
+#endif
 #endif
         W = nullptr;
     }
 }
 
-void ffm_read_problem_to_disk(string txt_path, string bin_path) {
+void ffm_read_problem_to_disk(string txt_path, string bin_path)
+{
 
     Timer timer;
-    
+
     cout << "First check if the text file has already been converted to binary format " << flush;
     bool same_file = check_same_txt_bin(txt_path, bin_path);
     cout << "(" << fixed << setprecision(1) << timer.toc() << " seconds)" << endl;
 
-    if(same_file) {
+    if (same_file)
+    {
         cout << "Binary file found. Skip converting text to binary" << endl;
-    } else {
+    }
+    else
+    {
         cout << "Binary file NOT found. Convert text file to binary file " << flush;
         txt2bin(txt_path, bin_path);
         cout << "(" << fixed << setprecision(1) << timer.toc() << " seconds)" << endl;
     }
 }
 
-ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param) {
+ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
+{
 
     problem_on_disk tr(tr_path);
     problem_on_disk va(va_path);
@@ -540,7 +580,7 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
 
     ffm_long w_size = get_w_size(model);
     vector<ffm_float> prev_W(w_size, 0);
-    if(auto_stop)
+    if (auto_stop)
         prev_W.assign(w_size, 0);
     ffm_double best_va_loss = numeric_limits<ffm_double>::max();
 
@@ -548,7 +588,7 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
     cout << "iter";
     cout.width(13);
     cout << "tr_logloss";
-    if(!va_path.empty())
+    if (!va_path.empty())
     {
         cout.width(13);
         cout << "va_logloss";
@@ -558,15 +598,23 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
     cout << endl;
 
     Timer timer;
-
-    auto one_epoch = [&] (problem_on_disk &prob, bool do_update) {
-
+    // lambda表达式
+    /**
+     * []      // 沒有定义任何变量。使用未定义变量会引发错误。
+     * [x, &y] // x以传值方式传入（默认），y以引用方式传入。
+     * [&]     // 任何被使用到的外部变量都隐式地以引用方式加以引用。
+     * [=]     // 任何被使用到的外部变量都隐式地以传值方式加以引用。
+     * [&, x]  // x显式地以传值方式加以引用。其余变量以引用方式加以引用。
+     * [=, &z] // z显式地以引用方式加以引用。其余变量以传值方式加以引用。
+     */
+    auto one_epoch = [&](problem_on_disk &prob, bool do_update) {
         ffm_double loss = 0;
 
         vector<ffm_int> outer_order(prob.meta.num_blocks);
-        iota(outer_order.begin(), outer_order.end(), 0);
-        random_shuffle(outer_order.begin(), outer_order.end());
-        for(auto blk : outer_order) {
+        iota(outer_order.begin(), outer_order.end(), 0); // 生成[0,num_blocks)的序列
+        random_shuffle(outer_order.begin(), outer_order.end()); // shuffle
+        for (auto blk : outer_order)
+        {
             ffm_int l = prob.load_block(blk);
 
             vector<ffm_int> inner_order(l);
@@ -574,28 +622,31 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
             random_shuffle(inner_order.begin(), inner_order.end());
 
 #if defined USEOMP
-#pragma omp parallel for schedule(static) reduction(+: loss)
+#pragma omp parallel for schedule(static) reduction(+ \
+                                                    : loss)
 #endif
-            for(ffm_int ii = 0; ii < l; ii++) {
+            for (ffm_int ii = 0; ii < l; ii++)
+            {
                 ffm_int i = inner_order[ii];
 
                 ffm_float y = prob.Y[i];
-                
+
                 ffm_node *begin = &prob.X[prob.P[i]];
 
-                ffm_node *end = &prob.X[prob.P[i+1]];
+                ffm_node *end = &prob.X[prob.P[i + 1]];
 
-                ffm_float r = param.normalization? prob.R[i] : 1;
+                ffm_float r = param.normalization ? prob.R[i] : 1;
 
                 ffm_double t = wTx(begin, end, r, model);
 
-                ffm_double expnyt = exp(-y*t);
+                ffm_double expnyt = exp(-y * t);
 
                 loss += log1p(expnyt);
 
-                if(do_update) {
-                   
-                    ffm_float kappa = -y*expnyt/(1+expnyt);
+                if (do_update)
+                {
+
+                    ffm_float kappa = -y * expnyt / (1 + expnyt);
 
                     wTx(begin, end, r, model, kappa, param.eta, param.lambda, true);
                 }
@@ -605,7 +656,8 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
         return loss / prob.meta.l;
     };
 
-    for(ffm_int iter = 1; iter <= param.nr_iters; iter++) {
+    for (ffm_int iter = 1; iter <= param.nr_iters; iter++)
+    {
         timer.tic();
         ffm_double tr_loss = one_epoch(tr, true);
         timer.toc();
@@ -615,20 +667,26 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
         cout.width(13);
         cout << fixed << setprecision(5) << tr_loss;
 
-        if(!va.is_empty()) {
+        if (!va.is_empty())
+        {
             ffm_double va_loss = one_epoch(va, false);
 
             cout.width(13);
             cout << fixed << setprecision(5) << va_loss;
 
-            if(auto_stop) {
-                if(va_loss > best_va_loss) {
-                    memcpy(model.W, prev_W.data(), w_size*sizeof(ffm_float));
-                    cout << endl << "Auto-stop. Use model at " << iter-1 << "th iteration." << endl;
+            if (auto_stop)
+            {
+                if (va_loss > best_va_loss)
+                {
+                    memcpy(model.W, prev_W.data(), w_size * sizeof(ffm_float));
+                    cout << endl
+                         << "Auto-stop. Use model at " << iter - 1 << "th iteration." << endl;
                     break;
-                } else {
-                    memcpy(prev_W.data(), model.W, w_size*sizeof(ffm_float));
-                    best_va_loss = va_loss; 
+                }
+                else
+                {
+                    memcpy(prev_W.data(), model.W, w_size * sizeof(ffm_float));
+                    best_va_loss = va_loss;
                 }
             }
         }
@@ -639,61 +697,67 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
     return model;
 }
 
-void ffm_save_model(ffm_model &model, string path) {
+void ffm_save_model(ffm_model &model, string path)
+{
     ofstream f_out(path, ios::out | ios::binary);
-    f_out.write(reinterpret_cast<char*>(&model.n), sizeof(ffm_int));
-    f_out.write(reinterpret_cast<char*>(&model.m), sizeof(ffm_int));
-    f_out.write(reinterpret_cast<char*>(&model.k), sizeof(ffm_int));
-    f_out.write(reinterpret_cast<char*>(&model.normalization), sizeof(bool));
+    f_out.write(reinterpret_cast<char *>(&model.n), sizeof(ffm_int));
+    f_out.write(reinterpret_cast<char *>(&model.m), sizeof(ffm_int));
+    f_out.write(reinterpret_cast<char *>(&model.k), sizeof(ffm_int));
+    f_out.write(reinterpret_cast<char *>(&model.normalization), sizeof(bool));
 
     ffm_long w_size = get_w_size(model);
     // f_out.write(reinterpret_cast<char*>(model.W), sizeof(ffm_float) * w_size);
     // Need to write chunk by chunk because some compiler use int32 and will overflow when w_size * 4 > MAX_INT
 
-    for(ffm_long offset = 0; offset < w_size; ) {
-        ffm_long next_offset = min(w_size, offset + (ffm_long) sizeof(ffm_float) * kCHUNK_SIZE);
+    for (ffm_long offset = 0; offset < w_size;)
+    {
+        ffm_long next_offset = min(w_size, offset + (ffm_long)sizeof(ffm_float) * kCHUNK_SIZE);
         ffm_long size = next_offset - offset;
-        f_out.write(reinterpret_cast<char*>(model.W+offset), sizeof(ffm_float) * size);
+        f_out.write(reinterpret_cast<char *>(model.W + offset), sizeof(ffm_float) * size);
         offset = next_offset;
     }
 }
 
-ffm_model ffm_load_model(string path) {
+ffm_model ffm_load_model(string path)
+{
     ifstream f_in(path, ios::in | ios::binary);
 
     ffm_model model;
-    f_in.read(reinterpret_cast<char*>(&model.n), sizeof(ffm_int));
-    f_in.read(reinterpret_cast<char*>(&model.m), sizeof(ffm_int));
-    f_in.read(reinterpret_cast<char*>(&model.k), sizeof(ffm_int));
-    f_in.read(reinterpret_cast<char*>(&model.normalization), sizeof(bool));
+    f_in.read(reinterpret_cast<char *>(&model.n), sizeof(ffm_int));
+    f_in.read(reinterpret_cast<char *>(&model.m), sizeof(ffm_int));
+    f_in.read(reinterpret_cast<char *>(&model.k), sizeof(ffm_int));
+    f_in.read(reinterpret_cast<char *>(&model.normalization), sizeof(bool));
 
     ffm_long w_size = get_w_size(model);
     model.W = malloc_aligned_float(w_size);
     // f_in.read(reinterpret_cast<char*>(model.W), sizeof(ffm_float) * w_size);
     // Need to write chunk by chunk because some compiler use int32 and will overflow when w_size * 4 > MAX_INT
 
-    for(ffm_long offset = 0; offset < w_size; ) {
-        ffm_long next_offset = min(w_size, offset + (ffm_long) sizeof(ffm_float) * kCHUNK_SIZE);
+    for (ffm_long offset = 0; offset < w_size;)
+    {
+        ffm_long next_offset = min(w_size, offset + (ffm_long)sizeof(ffm_float) * kCHUNK_SIZE);
         ffm_long size = next_offset - offset;
-        f_in.read(reinterpret_cast<char*>(model.W+offset), sizeof(ffm_float) * size);
+        f_in.read(reinterpret_cast<char *>(model.W + offset), sizeof(ffm_float) * size);
         offset = next_offset;
     }
 
     return model;
 }
 
-ffm_float ffm_predict(ffm_node *begin, ffm_node *end, ffm_model &model) {
+ffm_float ffm_predict(ffm_node *begin, ffm_node *end, ffm_model &model)
+{
     ffm_float r = 1;
-    if(model.normalization) {
+    if (model.normalization)
+    {
         r = 0;
-        for(ffm_node *N = begin; N != end; N++)
-            r += N->v*N->v; 
-        r = 1/r;
+        for (ffm_node *N = begin; N != end; N++)
+            r += N->v * N->v;
+        r = 1 / r;
     }
 
     ffm_float t = wTx(begin, end, r, model);
 
-    return 1/(1+exp(-t));
+    return 1 / (1 + exp(-t));
 }
 
 } // namespace ffm
