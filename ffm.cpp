@@ -195,7 +195,7 @@ inline ffm_float wTx(
 {
 
     ffm_int align0 = 2 * get_k_aligned(model.k); // 每个ebedding向量的偏移量
-    ffm_int align1 = model.m * align0; // 每个特征的偏移量
+    ffm_int align1 = model.m * align0;           // 每个特征的偏移量
 
     ffm_float t = 0;
     for (ffm_node *N1 = begin; N1 != end; N1++)
@@ -206,7 +206,7 @@ inline ffm_float wTx(
         if (j1 >= model.n || f1 >= model.m)
             continue;
 
-        for (ffm_node *N2 = N1 + 1; N2 != end; N2++)
+        for (ffm_node *N2 = N1 + 1; N2 != end; N2++) // 从下一个节点开始了，没有自身和自身交叉，但是有和同一个域交叉
         {
             ffm_int j2 = N2->j;
             ffm_int f2 = N2->f;
@@ -313,19 +313,19 @@ ffm_model init_model(ffm_int n, ffm_int m, ffm_parameter param)
 
 struct disk_problem_meta
 {
-    ffm_int n = 0; //特征数
-    ffm_int m = 0; // 域个数
-    ffm_int l = 0; // 样本数量
+    ffm_int n = 0;          //特征数
+    ffm_int m = 0;          // 域个数
+    ffm_int l = 0;          // 样本数量
     ffm_int num_blocks = 0; // block的数量，每个block的记录数为kCHUNK_SIZE
-    ffm_long B_pos = 0; // 记录每个block在文件中的起始位置
-    uint64_t hash1; // 文件第一个block的hash值
-    uint64_t hash2; // 整个文件的hash值
+    ffm_long B_pos = 0;     // 记录每个block在文件中的起始位置
+    uint64_t hash1;         // 文件第一个block的hash值
+    uint64_t hash2;         // 整个文件的hash值
 };
 
 struct problem_on_disk
 {
-    disk_problem_meta meta; 
-    vector<ffm_float> Y; 
+    disk_problem_meta meta;
+    vector<ffm_float> Y;
     vector<ffm_float> R;
     vector<ffm_long> P;
     vector<ffm_node> X;
@@ -377,6 +377,10 @@ private:
     ifstream f;
 };
 
+/**
+ * 计算文本文件的hash值
+ * one_block = true 时仅计算第一个black对应的文本hash，否则计算整个文本
+ **/
 uint64_t hashfile(string txt_path, bool one_block = false)
 {
     ifstream f(txt_path, ios::ate | ios::binary); // 打开文件并将指针至于文件尾
@@ -417,6 +421,7 @@ uint64_t hashfile(string txt_path, bool one_block = false)
 }
 
 /**
+ * 文本转二进制文件
  * 二进制文件格式： 文件元数据、数据块、每个数据块的起始位置
  */
 void txt2bin(string txt_path, string bin_path)
@@ -446,11 +451,11 @@ void txt2bin(string txt_path, string bin_path)
         ffm_long nnz = P[l];
         meta.l += l;
 
-        f_bin.write(reinterpret_cast<char *>(&l), sizeof(ffm_int)); // 当前块的样本数
-        f_bin.write(reinterpret_cast<char *>(Y.data()), sizeof(ffm_float) * l); // 样本标注
-        f_bin.write(reinterpret_cast<char *>(R.data()), sizeof(ffm_float) * l); // 样本归一化参数（L2范数）
+        f_bin.write(reinterpret_cast<char *>(&l), sizeof(ffm_int));                  // 当前块的样本数
+        f_bin.write(reinterpret_cast<char *>(Y.data()), sizeof(ffm_float) * l);      // 样本标注
+        f_bin.write(reinterpret_cast<char *>(R.data()), sizeof(ffm_float) * l);      // 样本归一化参数（L2范数）
         f_bin.write(reinterpret_cast<char *>(P.data()), sizeof(ffm_long) * (l + 1)); // 向量的稀疏表示，p中的每个值表示对应样本在X中的起始位置
-        f_bin.write(reinterpret_cast<char *>(X.data()), sizeof(ffm_node) * nnz);
+        f_bin.write(reinterpret_cast<char *>(X.data()), sizeof(ffm_node) * nnz);     // 样本的特征数据
 
         Y.clear();
         R.clear();
@@ -501,14 +506,14 @@ void txt2bin(string txt_path, string bin_path)
     write_chunk();
     write_chunk(); // write a dummy empty chunk in order to know where the EOF is
     assert(meta.num_blocks == (ffm_int)B.size());
-    meta.B_pos = f_bin.tellp();
+    meta.B_pos = f_bin.tellp(); 
     f_bin.write(reinterpret_cast<char *>(B.data()), sizeof(ffm_long) * B.size());
 
     fclose(f_txt);
-    meta.hash1 = hashfile(txt_path, true); // 第一个block的hash值
+    meta.hash1 = hashfile(txt_path, true);  // 第一个block的hash值
     meta.hash2 = hashfile(txt_path, false); // 整个文件的hash值
 
-    f_bin.seekp(0, ios::beg); // 跳转到文件头
+    f_bin.seekp(0, ios::beg);                                                // 跳转到文件头
     f_bin.write(reinterpret_cast<char *>(&meta), sizeof(disk_problem_meta)); // 将文件头真实数据写入
 }
 
@@ -547,6 +552,9 @@ ffm_model::~ffm_model()
     }
 }
 
+/**
+ * 将LibFFM格式文本转为二进制文件
+ */
 void ffm_read_problem_to_disk(string txt_path, string bin_path)
 {
 
@@ -611,7 +619,7 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
         ffm_double loss = 0;
 
         vector<ffm_int> outer_order(prob.meta.num_blocks);
-        iota(outer_order.begin(), outer_order.end(), 0); // 生成[0,num_blocks)的序列
+        iota(outer_order.begin(), outer_order.end(), 0);        // 生成[0,num_blocks)的序列
         random_shuffle(outer_order.begin(), outer_order.end()); // shuffle
         for (auto blk : outer_order)
         {
@@ -625,6 +633,7 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
 #pragma omp parallel for schedule(static) reduction(+ \
                                                     : loss)
 #endif
+            // 对于每个样本计算梯度和更新权重，不需要mini-batch的方式，因为数据是稀疏的
             for (ffm_int ii = 0; ii < l; ii++)
             {
                 ffm_int i = inner_order[ii];
@@ -639,9 +648,9 @@ ffm_model ffm_train_on_disk(string tr_path, string va_path, ffm_parameter param)
 
                 ffm_double t = wTx(begin, end, r, model);
 
-                ffm_double expnyt = exp(-y * t);
+                ffm_double expnyt = exp(-y * t); 
 
-                loss += log1p(expnyt);
+                loss += log1p(expnyt); //log1p(x) = log(x + 1)
 
                 if (do_update)
                 {

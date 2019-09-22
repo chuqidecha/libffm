@@ -14,26 +14,29 @@
 using namespace std;
 using namespace ffm;
 
-struct Option {
+struct Option
+{
     string test_path, model_path, output_path;
 };
 
-string predict_help() {
+string predict_help()
+{
     return string(
-"usage: ffm-predict test_file model_file output_file\n");
+        "usage: ffm-predict test_file model_file output_file\n");
 }
 
-Option parse_option(int argc, char **argv) {
+Option parse_option(int argc, char **argv)
+{
     vector<string> args;
-    for(int i = 0; i < argc; i++)
+    for (int i = 0; i < argc; i++)
         args.push_back(string(argv[i]));
 
-    if(argc == 1)
+    if (argc == 1)
         throw invalid_argument(predict_help());
 
     Option option;
 
-    if(argc != 4)
+    if (argc != 4)
         throw invalid_argument("cannot parse argument");
 
     option.test_path = string(args[1]);
@@ -43,7 +46,8 @@ Option parse_option(int argc, char **argv) {
     return option;
 }
 
-void predict(string test_path, string model_path, string output_path) {
+void predict(string test_path, string model_path, string output_path)
+{
     int const kMaxLineSize = 1000000;
 
     FILE *f_in = fopen(test_path.c_str(), "r");
@@ -56,16 +60,18 @@ void predict(string test_path, string model_path, string output_path) {
     vector<ffm_node> x;
     ffm_int i = 0;
 
-    for(; fgets(line, kMaxLineSize, f_in) != nullptr; i++) {
+    for (; fgets(line, kMaxLineSize, f_in) != nullptr; i++)
+    {
         x.clear();
         char *y_char = strtok(line, " \t");
-        ffm_float y = (atoi(y_char)>0)? 1.0f : -1.0f;
+        ffm_float y = (atoi(y_char) > 0) ? 1.0f : -1.0f;
 
-        while(true) {
-            char *field_char = strtok(nullptr,":");
-            char *idx_char = strtok(nullptr,":");
-            char *value_char = strtok(nullptr," \t");
-            if(field_char == nullptr || *field_char == '\n')
+        while (true)
+        {
+            char *field_char = strtok(nullptr, ":");
+            char *idx_char = strtok(nullptr, ":");
+            char *value_char = strtok(nullptr, " \t");
+            if (field_char == nullptr || *field_char == '\n')
                 break;
 
             ffm_node N;
@@ -76,9 +82,9 @@ void predict(string test_path, string model_path, string output_path) {
             x.push_back(N);
         }
 
-        ffm_float y_bar = ffm_predict(x.data(), x.data()+x.size(), model);
+        ffm_float y_bar = ffm_predict(x.data(), x.data() + x.size(), model);
 
-        loss -= y==1? log(y_bar) : log(1-y_bar);
+        loss -= y == 1 ? log(y_bar) : log(1 - y_bar);
 
         f_out << y_bar << "\n";
     }
@@ -90,11 +96,15 @@ void predict(string test_path, string model_path, string output_path) {
     fclose(f_in);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     Option option;
-    try {
+    try
+    {
         option = parse_option(argc, argv);
-    } catch(invalid_argument const &e) {
+    }
+    catch (invalid_argument const &e)
+    {
         cout << e.what() << endl;
         return 1;
     }
