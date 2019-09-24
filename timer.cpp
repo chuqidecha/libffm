@@ -9,8 +9,8 @@ Timer::Timer()
 void Timer::reset()
 {
     begin = std::chrono::high_resolution_clock::now();
-    duration = 
-        std::chrono::duration_cast<std::chrono::milliseconds>(begin-begin);
+    duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(begin - begin);
 }
 
 void Timer::tic()
@@ -20,8 +20,7 @@ void Timer::tic()
 
 float Timer::toc()
 {
-    duration += std::chrono::duration_cast<std::chrono::milliseconds>
-                    (std::chrono::high_resolution_clock::now()-begin);
+    duration += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - begin);
     return get();
 }
 

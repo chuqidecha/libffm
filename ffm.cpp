@@ -188,7 +188,7 @@ inline ffm_float wTx(
     ffm_float lambda=0, 
     bool do_update=false) {
 
-    ffm_int align0 = 2 * get_k_aligned(model.k);
+    ffm_int align0 = 2 * get_k_aligned(model.k); //对齐后k的大小*2
     ffm_int align1 = model.m * align0;
 
     ffm_float t = 0;
